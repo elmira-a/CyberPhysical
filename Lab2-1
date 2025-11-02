@@ -1,0 +1,16 @@
+volatile bool myled = false;
+
+ISR(INT0_vect) {
+  myled = !myled;
+  digitalWrite(13, myled);
+}
+
+void setup() {
+  pinMode(13, OUTPUT);
+  pinMode(2, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(2), INT0_vect, FALLING);
+}
+
+void loop() {
+  // main loop does nothing, LED toggles inside ISR
+}
