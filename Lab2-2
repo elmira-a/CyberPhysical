@@ -1,0 +1,18 @@
+#include <PinChangeInterrupt.h>
+
+volatile bool myled = false;
+
+ISR(mytoggle) {
+  myled = !myled;
+  digitalWrite(13, myled);
+}
+
+void setup() {
+  pinMode(13, OUTPUT);
+  pinMode(8, INPUT_PULLUP);
+  attachPCINT(digitalPinToPCINT(8), mytoggle, FALLING);
+}
+
+void loop() {
+  // main loop does nothing, LED toggles inside ISR
+}
