@@ -1,0 +1,10 @@
+void setup() {
+  Serial.begin(38400);
+  // optional: wait for serial if needed
+  // while (!Serial) { ; }
+}
+
+void loop() {
+  Serial.println("Hello UART");
+  delay(500);
+}
