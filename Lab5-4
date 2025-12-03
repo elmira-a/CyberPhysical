@@ -1,0 +1,73 @@
+#include <avr/io.h>
+#include <util/delay.h>
+
+#define TRIG_PIN  PB0  // D8
+#define ECHO_PIN  PB1  // D9
+#define FAN_PWM   PD6  // D6 (OC2A)
+
+void io_init(void) {
+    // TRIG as output
+    DDRB |= (1 << TRIG_PIN);
+    // ECHO as input
+    DDRB &= ~(1 << ECHO_PIN);
+
+    // FAN_PWM as output
+    DDRD |= (1 << FAN_PWM);
+}
+
+void pwm_init(void) {
+    // Timer2 Fast PWM, non-inverting, prescaler = 64
+    TCCR2A = (1 << WGM20) | (1 << WGM21) | (1 << COM2A1);
+    TCCR2B = (1 << CS22);  // prescaler 64 → approx 976 Hz PWM
+    OCR2A = 0;  // fan off initially
+}
+
+uint16_t measure_distance_counts(void) {
+    // Trigger 10 µs pulse
+    PORTB &= ~(1 << TRIG_PIN);
+    _delay_us(2);
+    PORTB |= (1 << TRIG_PIN);
+    _delay_us(10);
+    PORTB &= ~(1 << TRIG_PIN);
+
+    // Wait for ECHO HIGH
+    while (!(PINB & (1 << ECHO_PIN)));
+    TCNT1 = 0;
+    // Wait for ECHO LOW or timeout
+    while (PINB & (1 << ECHO_PIN));
+    return TCNT1;
+}
+
+float counts_to_cm(uint16_t counts) {
+    // Timer1 clock = 16 MHz / prescaler. Here prescaler = 8 recommended
+    // so clock tick = 0.5 µs → 1 count = 0.5 µs
+    float time_us = counts * 0.5;
+    float distance_cm = (time_us * 0.034) / 2.0;
+    return distance_cm;
+}
+
+int main(void) {
+    io_init();
+    pwm_init();
+
+    // Timer1 prescaler 8
+    TCCR1B = (1 << CS11);
+
+    while (1) {
+        uint16_t cnt = measure_distance_counts();
+        float dist = counts_to_cm(cnt);
+
+        if (dist <= 4.0) {
+            OCR2A = 255; // fan full speed
+        } else if (dist <= 20.0) {
+            // map 4–20 cm to 255–0 duty (inverse)
+            float ratio = (20.0 - dist) / (20.0 - 4.0);
+            OCR2A = (uint8_t)(ratio * 255);
+        } else {
+            OCR2A = 0; // fan off
+        }
+
+        _delay_ms(2000);  // wait 2 seconds before next reading
+    }
+    return 0;
+}
