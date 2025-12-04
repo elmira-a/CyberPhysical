@@ -1,0 +1,55 @@
+#include <avr/io.h>
+#include <util/delay.h>
+
+#define BME280_ADDR 0x76  // depends on your wiring
+
+// Simple TWI init for ~100 kHz
+void TWI_Init(void) {
+  TWSR = 0x00;  // prescaler = 1
+  TWBR = 72;    // about 100 kHz at 16 MHz
+}
+
+// Here you would add TWI start, write, read, stop functions
+
+// Very simplified temperature read placeholder
+float BME280_ReadTempC(void) {
+  // Real code: read raw registers and apply calibration formula
+  // For the report, we just show a test value
+  return 27.0;
+}
+
+// PWM init on OC0A (PD6) to drive fan
+void PWM_Init(void) {
+  DDRD |= (1 << PD6); // OC0A as output
+  // Fast PWM, non-inverting, prescaler = 64
+  TCCR0A = (1 << WGM01) | (1 << WGM00) | (1 << COM0A1);
+  TCCR0B = (1 << CS01) | (1 << CS00);
+}
+
+// state: 0 = OFF, 1 = LOW, 2 = MEDIUM, 3 = HIGH
+void Fan_SetState(uint8_t state) {
+  switch (state) {
+    case 0: OCR0A = 0;    break;   // 0%
+    case 1: OCR0A = 64;   break;   // ~25%
+    case 2: OCR0A = 153;  break;   // ~60%
+    case 3: OCR0A = 255;  break;   // 100%
+  }
+}
+
+int main(void) {
+  TWI_Init();
+  PWM_Init();
+
+  while (1) {
+    float temp = BME280_ReadTempC();
+    uint8_t state;
+
+    if (temp < 25.0)       state = 0; // OFF
+    else if (temp < 28.0)  state = 1; // LOW
+    else if (temp < 32.0)  state = 2; // MEDIUM
+    else                   state = 3; // HIGH
+
+    Fan_SetState(state);
+    _delay_ms(200);
+  }
+}
