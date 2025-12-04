@@ -1,0 +1,24 @@
+#include <SPI.h>
+
+const int SS_PIN = 8;       // Slave Select pin (hardware SS)
+const byte DATA_BYTE = 0x55;
+
+void setup() {
+  pinMode(SS_PIN, OUTPUT);
+  digitalWrite(SS_PIN, HIGH);  // do not select slave at start
+
+  SPI.begin();  // enable SPI hardware
+}
+
+void loop() {
+  // speed 1 MHz, MSB first, Mode 0
+  SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
+
+  digitalWrite(SS_PIN, LOW);        // start SPI frame
+  SPI.transfer(DATA_BYTE);          // send 0x55 on MOSI
+  digitalWrite(SS_PIN, HIGH);       // end SPI frame
+
+  SPI.endTransaction();
+
+  delay(100);  // delay so pulses are easy to see on oscilloscope
+}
